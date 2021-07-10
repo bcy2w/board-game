@@ -1,0 +1,29 @@
+.player {
+  position: absolute;
+}
+
+.colour-filter-green{
+  filter: invert(19%) sepia(82%) saturate(1145%) hue-rotate(88deg) brightness(94%) contrast(108%);
+}
+
+/* filter from https://codepen.io/sosuke/pen/Pjoqqp */
+.colour-filter-light-blue {
+  filter: invert(10%) sepia(83%) saturate(4552%) hue-rotate(292deg) brightness(92%) contrast(120%);
+}
+
+.colour-filter-purple {
+  filter: invert(46%) sepia(73%) saturate(6158%) hue-rotate(245deg) brightness(100%) contrast(101%);
+}
+
+@keyframes animateMove {
+  0% {
+    transform: translate(0,0);
+  }
+  100% {
+    transform: translate(var(--translateX),var(--translateY));
+  }
+}
+
+.animating {
+  animation: animateMove .2s ease-in-out forwards;
+}
