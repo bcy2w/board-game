@@ -4,9 +4,12 @@ import background from './board-background.svg';
 import './Monopoly.css';
 import Player from './Player';
 import PlayerInfoWidget from './PlayerInfoWidget';
+import LocationSaleWidget from './LocationSaleWidget';
 import {
     PlayerInfo
   , PlayerState, PlayerStateMap, INIT_PLAYER_STATE
+  , Ownership
+  , LocationSaleState
   , GameStates, GameStatesMutators, mutateGameStates, INIT_GAME_STATES
   } from './GameStates';
 import Dice from './Dice';
@@ -72,25 +75,25 @@ function maybeStartStep( playerState : PlayerState ) : PlayerState {
 
 function Monopoly( props : Props ) {
   const [currentPlayerIndex,setCurrentPlayerIndex] = useState( INIT_GAME_STATES.currentPlayerIndex );
-
   const [playerStates,setPlayerStates] = useState( INIT_GAME_STATES.playerStates );
-
-  const [ownershipAssignments,setOwnershipAssignments] = useState( INIT_GAME_STATES.ownershipAssignments );
-
-  const [canRollDice,setCanRollDice] = useState( true );
+  const [ownershipMap,setOwnershipMap] = useState( INIT_GAME_STATES.ownershipMap );
+  const [canRollDice,setCanRollDice] = useState( INIT_GAME_STATES.canRollDice );
+  const [locationSaleState,setLocationSaleState] = useState( INIT_GAME_STATES.locationSaleState );
 
   const gameStatesMutators : GameStatesMutators = {
     currentPlayerIndex : setCurrentPlayerIndex,
     playerStates : (s)=>sleep(100).then(()=>setPlayerStates(s)),
-    ownershipAssignments : setOwnershipAssignments,
+    ownershipMap : setOwnershipMap,
     canRollDice : setCanRollDice,
+    locationSaleState : setLocationSaleState,
   }
 
   const gameStates = {
     currentPlayerIndex : currentPlayerIndex,
     playerStates : playerStates,
-    ownershipAssignments : ownershipAssignments,
+    ownershipMap : ownershipMap,
     canRollDice : canRollDice,
+    locationSaleState : locationSaleState,
   }
 
   const newPlayerStatesEntries = props.playersInfo
@@ -152,7 +155,6 @@ function Monopoly( props : Props ) {
     const playerState = gameStates.playerStates[ playerId];
     const currentLocationId = playerState.gotoLocationId || playerState.locationId;
 
-// console.log( 'Step end! ' + playerId, gameStates.playerStates[playerId])
     const playerStateDelta = {
       locationId : currentLocationId,
       gotoLocationId : undefined,
@@ -171,11 +173,63 @@ function Monopoly( props : Props ) {
     }
 
     if ( playerState.stepsAvailable < 1 ) {
-      // TODO: handle actions at location
+      // We are done stepping.
 
-      return doTurnEnd( newGameStates );
+      // TODO: handle actions at location
+      if ( !ownershipMap[currentLocationId] ) {
+        const location = boardModel.getLocation( currentLocationId );
+        // Location is not owned
+        if ( location.cost !== undefined ) {
+          // Location is ownable
+          const locationSaleGameState = { ...newGameStates,
+            locationSaleState : {
+              locationId : currentLocationId,
+              playerId : playerId,
+              askingPrice : location.cost,
+              accepted : false
+            }
+          };
+          return locationSaleGameState;
+        } else {
+          // Location is not ownable
+          return doTurnEnd( newGameStates );
+        }
+
+      } else {
+        return doTurnEnd( newGameStates );
+      }
+
     }
     return newGameStates;
+  }
+
+  function doLocationSaleBuy(
+      locationSaleState : LocationSaleState,
+      gameStates: GameStates ) : GameStates {
+
+    // Pay the price
+    const newPlayerStates = updatePlayerState(
+      gameStates.playerStates,
+      currentPlayerId,
+      {
+        cash: currentPlayerState.cash - locationSaleState.askingPrice
+      }
+    );
+
+    const newOwnershipMap = {...ownershipMap,
+      [locationSaleState.locationId] : {
+        locationId : locationSaleState.locationId,
+        ownerId : currentPlayerId,
+        numPipes : 0,
+        numCastles : 0
+      }};
+
+    return doTurnEnd( { ...gameStates,
+      playerStates : newPlayerStates,
+      ownershipMap : newOwnershipMap,
+      locationSaleState : undefined,
+    } );
+
   }
 
   function doTurnEnd( gameStates: GameStates ) : GameStates {
@@ -193,18 +247,22 @@ function Monopoly( props : Props ) {
         doDiceRoll( rolls, currentPlayerId, gameStates2 ) );
   }
 
-  /**
-   * 
-   * @param index Player's index
-   */
   const handlePlayerStepEnd = ( playerId:string ) => {
     mutateGameStates( gameStatesMutators, gameStates2,
         doPlayerStepEnd( playerId, gameStates2 ) );
   }
 
+  const handleLocationSaleBuy = (locationSaleState:LocationSaleState) => {
+    mutateGameStates( gameStatesMutators, gameStates2,
+        doLocationSaleBuy(locationSaleState, gameStates2 ) );
+  }
+
   return (
     <div className="monopoly">
       <img src={background} className="board-background" alt="background" />
+      <div className="dice">
+        <Dice onRoll={handleDiceRoll} disabled={!canRollDice}/>
+      </div>
       { props.playersInfo.map( (playerInfo,index) =>
         <Player
             key={index}
@@ -216,15 +274,20 @@ function Monopoly( props : Props ) {
         )
       }
       <div className="player-info">
-        <PlayerInfoWidget
+        <PlayerInfoWidget boardModel={boardModel}
             playerNumber={currentPlayerIndex}
-            boardModel={boardModel}
             playerState={currentPlayerState}
           />
       </div>
-      <div className="dice">
-        <Dice onRoll={handleDiceRoll} disabled={!canRollDice}/>
-      </div>
+      { locationSaleState &&
+        (<div className="location-sale">
+          <LocationSaleWidget boardModel={boardModel}
+              locationSaleState={locationSaleState}
+              playerState={currentPlayerState}
+              onBuy={(locationSale:LocationSaleState)=>handleLocationSaleBuy(locationSale)}
+            />
+        </div>)
+      }
     </div>
   );
 }

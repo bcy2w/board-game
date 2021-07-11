@@ -21,11 +21,16 @@ export type PlayerStateDefault = Omit<PlayerState, 'playerInfo'>;
 export type PlayerStateMap = Record<string,PlayerState>;
 
 export const INIT_PLAYER_STATE : PlayerStateDefault = {
-  cash : 0,
-
+  cash : 1000000,
   locationId : INIT_LOCATION_ID,
-
   stepsAvailable : 0
+}
+
+export type LocationSaleState = {
+  locationId : string;
+  playerId : string;
+  askingPrice : number;
+  accepted : boolean;
 }
 
 export type Ownership = {
@@ -35,12 +40,14 @@ export type Ownership = {
   numPipes : number;
   numCastles : number;
 }
+export type OwnershipMap = Record<string,Ownership>;
 
 export type GameStates = {
   currentPlayerIndex : number;
   playerStates : PlayerStateMap;
-  ownershipAssignments : Record<string,Ownership>;
-  canRollDice : boolean
+  ownershipMap : OwnershipMap;
+  canRollDice : boolean;
+  locationSaleState? : LocationSaleState;
 }
 
 export type GameStatesMutators = Record<keyof GameStates, (a:any)=>void>;
@@ -56,11 +63,18 @@ export const mutateGameStates = (
         gameStateMutator[k]( gameStateAfter[k] );
       }
     } );
+  (Object.keys( gameStateBefore ) as Array<keyof GameStates>)
+    .forEach( k => {
+      if ( gameStateBefore[k] && gameStateAfter[k] === undefined ) {
+        console.log( 'Unsetting ' + k )
+        gameStateMutator[k]( undefined );
+      }
+    } );
 }
 
 export const INIT_GAME_STATES : GameStates = {
   currentPlayerIndex : 0,
   playerStates : {},
-  ownershipAssignments : {},
+  ownershipMap : {},
   canRollDice : true,
 }

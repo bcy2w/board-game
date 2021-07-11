@@ -26,6 +26,10 @@ function PlayerInfoWidget( props : Props ) {
             props.boardModel.getLocationName(props.playerState.locationId)
           } readOnly/>
       </Form.Group>
+      <Form.Group>
+        <Form.Label>Cash</Form.Label>
+        <Form.Control type="text" placeholder={''+props.playerState.cash} readOnly/>
+      </Form.Group>
     </Form>
   );
 }
