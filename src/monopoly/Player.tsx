@@ -1,15 +1,14 @@
 import React, {useState} from 'react';
 
 import BoardModel from './BoardModel';
-import {PlayerStateMap} from './GameStates';
+import {PlayerState} from './GameStates';
 
 import './Player.css';
 import player from './player-0.svg';
 
 
 interface Props {
-  playerStates : PlayerStateMap;
-  playerId : string;
+  playerState : PlayerState;
 
   playerIndexAtLocation : number;
 
@@ -33,25 +32,23 @@ const getColourClass = ( playerIndex : number ) : string =>
 function Player( props : Props ) {
   const [isAnimating,setIsAnimating] = useState( false );
 
-  const playerState = props.playerStates[props.playerId];
-
   const [offsetX,offsetY] = [props.playerIndexAtLocation * 5, props.playerIndexAtLocation * 10];
 
-  const [x,y] = props.boardModel.getCoordinates( playerState.locationId );
+  const [x,y] = props.boardModel.getCoordinates( props.playerState.locationId );
 
-  const [gotoX,gotoY] = playerState.gotoLocationId ?
-      props.boardModel.getCoordinates( playerState.gotoLocationId ) : [x,y];
+  const [gotoX,gotoY] = props.playerState.gotoLocationId ?
+      props.boardModel.getCoordinates( props.playerState.gotoLocationId ) : [x,y];
 
   const [diffX,diffY] = [gotoX-x, gotoY-y];
 
-  if ( playerState.gotoLocationId ) {
-    if ( ! isAnimating ) {
-      setIsAnimating( true );
-    }
+  if ( isAnimating && !props.playerState.gotoLocationId ) {
+    setIsAnimating( false );
+  }
+  if ( !isAnimating && props.playerState.gotoLocationId ) {
+    setIsAnimating( true );
   }
 
   const handleAnimationEnd = () => {
-    setIsAnimating( false );
     props.onStepEnd?.()
   }
 
@@ -72,7 +69,7 @@ function Player( props : Props ) {
     <img src={player} className={classes}
         style={style}
         onAnimationEnd={handleAnimationEnd}
-        alt={'Player '+props.playerId} />
+        alt={'Player '+props.playerState.playerInfo.playerId} />
   );
 }
 

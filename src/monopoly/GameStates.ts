@@ -49,10 +49,10 @@ export const mutateGameStates = (
     gameStateMutator : GameStatesMutators,
     gameStateBefore : GameStates,
     gameStateAfter : GameStates ) => {
-  (Object.keys( gameStateAfter ) as Array<keyof GameStates>).
-    forEach( k => {
+  (Object.keys( gameStateAfter ) as Array<keyof GameStates>)
+    .forEach( k => {
       if ( gameStateBefore[k] !== gameStateAfter[k] ) {
-console.log( 'Changing ' + k, gameStateAfter[k] )
+        console.log( 'Setting ' + k, gameStateAfter[k] )
         gameStateMutator[k]( gameStateAfter[k] );
       }
     } );

@@ -7,7 +7,6 @@ import PlayerInfoWidget from './PlayerInfoWidget';
 import {
     PlayerInfo
   , PlayerState, PlayerStateMap, INIT_PLAYER_STATE
-  , Ownership
   , GameStates, GameStatesMutators, mutateGameStates, INIT_GAME_STATES
   } from './GameStates';
 import Dice from './Dice';
@@ -109,7 +108,7 @@ function Monopoly( props : Props ) {
   const currentPlayerId = props.playersInfo[currentPlayerIndex].playerId;
   const currentPlayerState = playerStates[currentPlayerId];
 
-  console.log('Hi Monopoly', gameStates);
+  console.log('Monopoly', gameStates);
 
   const gameStates2 = mapPlayerStateAction( maybeStartStep, gameStates );
   mutateGameStates( gameStatesMutators, gameStates, gameStates2 );
@@ -153,7 +152,7 @@ function Monopoly( props : Props ) {
     const playerState = gameStates.playerStates[ playerId];
     const currentLocationId = playerState.gotoLocationId || playerState.locationId;
 
-console.log( 'Step end! ' + playerId, gameStates.playerStates[playerId])
+// console.log( 'Step end! ' + playerId, gameStates.playerStates[playerId])
     const playerStateDelta = {
       locationId : currentLocationId,
       gotoLocationId : undefined,
@@ -210,9 +209,8 @@ console.log( 'Step end! ' + playerId, gameStates.playerStates[playerId])
         <Player
             key={index}
             boardModel={boardModel}
-            playerId={playerInfo.playerId}
             playerIndexAtLocation={index}
-            playerStates={playerStates}
+            playerState={playerStates[playerInfo.playerId]}
             onStepEnd={handlePlayerStepEnd.bind(null,playerInfo.playerId)}
           />
         )

@@ -68,8 +68,8 @@ const locationsArray : Array<Location> = [
     id : 'b-0-jail', coords : [30,600], name : 'In Jail',
     exits : [{locationId:'World 2-1'}], cost : 60
   },{
-    id : 'World 2-1', coords : coordinates[11], name : 'World 2-1',
-    exits : [{locationId:'2-2'}], cost : 60
+    id : 'b-1', coords : coordinates[11], name : 'World 2-1',
+    exits : [{locationId:'b-2'}], cost : 60
   },{
     id : 'b-2', coords : coordinates[12], name : '2-2',
     exits : [{locationId:'b-3'}], cost : 60
