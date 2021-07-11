@@ -7,10 +7,10 @@ import PlayerInfoWidget from './PlayerInfoWidget';
 import LocationSaleWidget from './LocationSaleWidget';
 import {
     PlayerInfo
-  , PlayerState, PlayerStateMap, INIT_PLAYER_STATE
+  , PlayerState, PlayerStateMap, PlayerStateAction, mapPlayerStateAction, INIT_PLAYER_STATE
   , Ownership
   , LocationSaleState
-  , GameStates, GameStatesMutators, mutateGameStates, INIT_GAME_STATES
+  , GameStates, GameStatesMutators, GameStatesAction, doGameStatesAction, mutateGameStates, INIT_GAME_STATES
   } from './GameStates';
 import Dice from './Dice';
 import BoardModel from './BoardModel';
@@ -25,40 +25,26 @@ type Props = {
   playersInfo : Array<PlayerInfo>;
 }
 
-function mapPlayerStateAction(
-    playerStateAction : (s:PlayerState)=>PlayerState,
-    gameStates : GameStates ) : GameStates {
-  const playerStatesArray = Object.values( gameStates.playerStates );
-
-  const newPlayerStatesArray = playerStatesArray.map( playerStateAction );
-
-  if ( playerStatesArray.some(
-      (playerState,index) => playerState !== newPlayerStatesArray[index]) ) {
-
-    const newPlayerStates = Object.fromEntries(newPlayerStatesArray.map( p => [p.playerInfo.playerId,p] ) );
-    return {...gameStates, playerStates:newPlayerStates}
-
-  }
-  return gameStates;
-}
-
-function assocPlayerState(
-    playerStates: PlayerStateMap,
-    playerId : string,
-    playerState : PlayerState ) : PlayerStateMap {
-  return {...playerStates, [playerId]:playerState};
-}
-
+/**
+ * Updates a player's state with a delta.
+ */
 function updatePlayerState(
-    playerStates: PlayerStateMap,
     playerId : string,
-    stateDelta : Partial<PlayerState> ) : PlayerStateMap {
+    stateDelta : Partial<PlayerState>,
+    playerStates: PlayerStateMap
+    ) : PlayerStateMap {
   const playerState = playerStates[playerId];
-  return assocPlayerState(playerStates,playerId,{...playerState,...stateDelta});
+
+  return {...playerStates,
+      [playerId] : {...playerState,...stateDelta}
+    };
 }
 
 ////////////////////////////////////////////////////////////////////////
 
+/**
+ * Start a step if there is a step available.
+ */
 function maybeStartStep( playerState : PlayerState ) : PlayerState {
   if ( !playerState.gotoLocationId && playerState.stepsAvailable >= 1 ) {
     const nextLocations = boardModel.getNextLocations( playerState.locationId );
@@ -88,7 +74,7 @@ function Monopoly( props : Props ) {
     locationSaleState : setLocationSaleState,
   }
 
-  const gameStates = {
+  const gameStates0 = {
     currentPlayerIndex : currentPlayerIndex,
     playerStates : playerStates,
     ownershipMap : ownershipMap,
@@ -111,20 +97,63 @@ function Monopoly( props : Props ) {
   const currentPlayerId = props.playersInfo[currentPlayerIndex].playerId;
   const currentPlayerState = playerStates[currentPlayerId];
 
-  console.log('Monopoly', gameStates);
+  console.log('Monopoly', gameStates0);
 
-  const gameStates2 = mapPlayerStateAction( maybeStartStep, gameStates );
-  mutateGameStates( gameStatesMutators, gameStates, gameStates2 );
+  const gameStates = mapPlayerStateAction( maybeStartStep, gameStates0 );
+  mutateGameStates( gameStatesMutators, gameStates0, gameStates );
 
   ////////////////////////////////////////////////////////////
+
+  const handleGameStatesAction = <T extends any>( action: GameStatesAction<T>, arg: T ) => {
+    doGameStatesAction<T>( action, gameStatesMutators, arg, gameStates );
+  }
+
+  return (
+    <div className="monopoly">
+      <img src={background} className="board-background" alt="background" />
+      <div className="dice">
+        <Dice disabled={!canRollDice}
+            onRoll={(rolls: Array<number>)=>handleGameStatesAction( doDiceRoll, rolls )}
+          />
+      </div>
+      { props.playersInfo.map( (playerInfo,index) =>
+        <Player
+            key={index}
+            boardModel={boardModel}
+            playerIndexAtLocation={index}
+            playerState={playerStates[playerInfo.playerId]}
+            onStepEnd={()=>handleGameStatesAction( doPlayerStepEnd, playerInfo.playerId )}
+          />
+        )
+      }
+      <div className="player-info">
+        <PlayerInfoWidget boardModel={boardModel}
+            playerNumber={currentPlayerIndex}
+            playerState={currentPlayerState}
+          />
+      </div>
+      { locationSaleState &&
+        (<div className="location-sale">
+          <LocationSaleWidget boardModel={boardModel}
+              locationSaleState={locationSaleState}
+              playerState={currentPlayerState}
+              onBuy={(arg:LocationSaleState)=>handleGameStatesAction( doLocationSaleBuy, arg )}
+              onDecline={()=>handleGameStatesAction( doLocationSaleDecline, undefined )}
+            />
+        </div>)
+      }
+    </div>
+  );
+
+  ////////////////////////////////////////////////////////////
+
   function doDiceRoll(
       rolls : Array<number>,
-      playerId : string,
       gameStates : GameStates ) : GameStates {
 
     const roll = rolls.reduce( (subtotal,roll)=>subtotal+roll, 0 );
 
-    const playerState = gameStates.playerStates[playerId];
+    const playerState = gameStates.playerStates[currentPlayerId];
 
     const nextLocations = boardModel.getNextLocations( playerState.locationId );
     const nextLocationId = nextLocations[0].locationId;
@@ -132,12 +161,12 @@ function Monopoly( props : Props ) {
     // TODO: check if in prison
 
     const newPlayerStates = updatePlayerState(
-      gameStates.playerStates,
-      playerId,
+      currentPlayerId,
       {
         stepsAvailable: roll - 1,
         gotoLocationId: nextLocationId
-      }
+      },
+      gameStates.playerStates
     );
 
     return { ...gameStates,
@@ -151,8 +180,8 @@ function Monopoly( props : Props ) {
    * 
    * @param index Player's index
    */
-  const doPlayerStepEnd = ( playerId: string, gameStates: GameStates ) : GameStates => {
-    const playerState = gameStates.playerStates[ playerId];
+  function doPlayerStepEnd ( playerId: string, gameStates: GameStates ) : GameStates {
+    const playerState = gameStates.playerStates[ playerId ];
     const currentLocationId = playerState.gotoLocationId || playerState.locationId;
 
     const playerStateDelta = {
@@ -163,9 +192,9 @@ function Monopoly( props : Props ) {
     // TODO: Are we at Go?
 
     const newPlayerStates = updatePlayerState(
-      gameStates.playerStates,
       playerId,
-      playerStateDelta
+      playerStateDelta,
+      gameStates.playerStates
     );
 
     const newGameStates = { ...gameStates,
@@ -209,11 +238,11 @@ function Monopoly( props : Props ) {
 
     // Pay the price
     const newPlayerStates = updatePlayerState(
-      gameStates.playerStates,
       currentPlayerId,
       {
         cash: currentPlayerState.cash - locationSaleState.askingPrice
-      }
+      },
+      gameStates.playerStates
     );
 
     const newOwnershipMap = {...ownershipMap,
@@ -232,6 +261,16 @@ function Monopoly( props : Props ) {
 
   }
 
+  function doLocationSaleDecline(
+      arg:void,
+      gameStates: GameStates ) : GameStates {
+
+    return doTurnEnd( { ...gameStates,
+      locationSaleState : undefined,
+    } );
+
+  }
+
   function doTurnEnd( gameStates: GameStates ) : GameStates {
     return {
       ...gameStates,
@@ -240,56 +279,6 @@ function Monopoly( props : Props ) {
     }
   }
 
-  ////////////////////////////////////////////////////////////
-
-  const handleDiceRoll = (rolls : Array<number> ) => {
-    mutateGameStates( gameStatesMutators, gameStates2,
-        doDiceRoll( rolls, currentPlayerId, gameStates2 ) );
-  }
-
-  const handlePlayerStepEnd = ( playerId:string ) => {
-    mutateGameStates( gameStatesMutators, gameStates2,
-        doPlayerStepEnd( playerId, gameStates2 ) );
-  }
-
-  const handleLocationSaleBuy = (locationSaleState:LocationSaleState) => {
-    mutateGameStates( gameStatesMutators, gameStates2,
-        doLocationSaleBuy(locationSaleState, gameStates2 ) );
-  }
-
-  return (
-    <div className="monopoly">
-      <img src={background} className="board-background" alt="background" />
-      <div className="dice">
-        <Dice onRoll={handleDiceRoll} disabled={!canRollDice}/>
-      </div>
-      { props.playersInfo.map( (playerInfo,index) =>
-        <Player
-            key={index}
-            boardModel={boardModel}
-            playerIndexAtLocation={index}
-            playerState={playerStates[playerInfo.playerId]}
-            onStepEnd={handlePlayerStepEnd.bind(null,playerInfo.playerId)}
-          />
-        )
-      }
-      <div className="player-info">
-        <PlayerInfoWidget boardModel={boardModel}
-            playerNumber={currentPlayerIndex}
-            playerState={currentPlayerState}
-          />
-      </div>
-      { locationSaleState &&
-        (<div className="location-sale">
-          <LocationSaleWidget boardModel={boardModel}
-              locationSaleState={locationSaleState}
-              playerState={currentPlayerState}
-              onBuy={(locationSale:LocationSaleState)=>handleLocationSaleBuy(locationSale)}
-            />
-        </div>)
-      }
-    </div>
-  );
 }
 
 export default Monopoly;

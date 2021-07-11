@@ -1,5 +1,7 @@
 import BoardModel, { INIT_LOCATION_ID } from "./BoardModel";
 
+////////////////////////////////////////////////////////////
+
 export interface PlayerInfo {
   playerId : string;
   name : string;
@@ -16,15 +18,34 @@ export type PlayerState = {
   stepsAvailable : number;
 }
 
-export type PlayerStateDefault = Omit<PlayerState, 'playerInfo'>;
-
-export type PlayerStateMap = Record<string,PlayerState>;
-
-export const INIT_PLAYER_STATE : PlayerStateDefault = {
+export const INIT_PLAYER_STATE : Omit<PlayerState, 'playerInfo'> = {
   cash : 1000000,
   locationId : INIT_LOCATION_ID,
   stepsAvailable : 0
 }
+
+export type PlayerStateMap = Record<string,PlayerState>;
+
+export type PlayerStateAction = (arg:PlayerState)=>PlayerState;
+
+export function mapPlayerStateAction(
+    playerStateAction : PlayerStateAction,
+    gameStates : GameStates ) : GameStates {
+  const playerStatesArray = Object.values( gameStates.playerStates );
+
+  const newPlayerStatesArray = playerStatesArray.map( playerStateAction );
+
+  if ( playerStatesArray.some(
+      (playerState,index) => playerState !== newPlayerStatesArray[index]) ) {
+
+    const newPlayerStates = Object.fromEntries(newPlayerStatesArray.map( p => [p.playerInfo.playerId,p] ) );
+    return {...gameStates, playerStates:newPlayerStates}
+
+  }
+  return gameStates;
+}
+
+////////////////////////////////////////////////////////////
 
 export type LocationSaleState = {
   locationId : string;
@@ -32,6 +53,8 @@ export type LocationSaleState = {
   askingPrice : number;
   accepted : boolean;
 }
+
+////////////////////////////////////////////////////////////
 
 export type Ownership = {
   locationId : string;
@@ -41,6 +64,8 @@ export type Ownership = {
   numCastles : number;
 }
 export type OwnershipMap = Record<string,Ownership>;
+
+////////////////////////////////////////////////////////////
 
 export type GameStates = {
   currentPlayerIndex : number;
@@ -70,6 +95,16 @@ export const mutateGameStates = (
         gameStateMutator[k]( undefined );
       }
     } );
+}
+export type GameStatesAction<T> = (arg: T, gameStates: GameStates) => GameStates;
+
+export const doGameStatesAction = <T>(
+    gameStatesAction : GameStatesAction<T>,
+    gameStatesMutators: GameStatesMutators,
+    arg: T,
+    gameStates: GameStates ) => {
+  mutateGameStates( gameStatesMutators, gameStates,
+      gameStatesAction( arg, gameStates ) );
 }
 
 export const INIT_GAME_STATES : GameStates = {
