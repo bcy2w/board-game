@@ -63,6 +63,7 @@ function Monopoly( props : Props ) {
   const [currentPlayerIndex,setCurrentPlayerIndex] = useState( INIT_GAME_STATES.currentPlayerIndex );
   const [playerStates,setPlayerStates] = useState( INIT_GAME_STATES.playerStates );
   const [ownershipMap,setOwnershipMap] = useState( INIT_GAME_STATES.ownershipMap );
+  const [displayedPlayerId,setDisplayedPlayerId] = useState( INIT_GAME_STATES.displayedPlayerId );
   const [canRollDice,setCanRollDice] = useState( INIT_GAME_STATES.canRollDice );
   const [locationSaleState,setLocationSaleState] = useState( INIT_GAME_STATES.locationSaleState );
 
@@ -70,6 +71,7 @@ function Monopoly( props : Props ) {
     currentPlayerIndex : setCurrentPlayerIndex,
     playerStates : (s)=>sleep(100).then(()=>setPlayerStates(s)),
     ownershipMap : setOwnershipMap,
+    displayedPlayerId : setDisplayedPlayerId,
     canRollDice : setCanRollDice,
     locationSaleState : setLocationSaleState,
   }
@@ -78,6 +80,7 @@ function Monopoly( props : Props ) {
     currentPlayerIndex : currentPlayerIndex,
     playerStates : playerStates,
     ownershipMap : ownershipMap,
+    displayedPlayerId : displayedPlayerId,
     canRollDice : canRollDice,
     locationSaleState : locationSaleState,
   }
@@ -122,14 +125,14 @@ function Monopoly( props : Props ) {
             boardModel={boardModel}
             playerIndexAtLocation={index}
             playerState={playerStates[playerInfo.playerId]}
+            onClick={()=>{console.log( 'ZZZ ', playerInfo); handleGameStatesAction( doSetUserInfoDisplay, playerInfo.playerId )}}
             onStepEnd={()=>handleGameStatesAction( doPlayerStepEnd, playerInfo.playerId )}
           />
         )
       }
       <div className="player-info">
         <PlayerInfoWidget boardModel={boardModel}
-            playerNumber={currentPlayerIndex}
-            playerState={currentPlayerState}
+            playerState={displayedPlayerId ? playerStates[displayedPlayerId] : currentPlayerState}
           />
       </div>
       { locationSaleState &&
@@ -146,6 +149,12 @@ function Monopoly( props : Props ) {
   );
 
   ////////////////////////////////////////////////////////////
+
+  function doSetUserInfoDisplay( playerId: string, gameStates: GameStates ) : GameStates {
+    return {...gameStates,
+      displayedPlayerId : playerId
+    };
+  }
 
   function doDiceRoll(
       rolls : Array<number>,
@@ -184,12 +193,15 @@ function Monopoly( props : Props ) {
     const playerState = gameStates.playerStates[ playerId ];
     const currentLocationId = playerState.gotoLocationId || playerState.locationId;
 
-    const playerStateDelta = {
+    const playerStateDelta : Partial<PlayerState> = {
       locationId : currentLocationId,
       gotoLocationId : undefined,
     };
 
     // TODO: Are we at Go?
+    if ( currentLocationId === 'a-0' ) {
+      playerStateDelta.cash = playerState.cash + 100
+    }
 
     const newPlayerStates = updatePlayerState(
       playerId,
@@ -275,6 +287,7 @@ function Monopoly( props : Props ) {
     return {
       ...gameStates,
       currentPlayerIndex : (gameStates.currentPlayerIndex+1) % props.playersInfo.length,
+      displayedPlayerId : null,
       canRollDice : true
     }
   }

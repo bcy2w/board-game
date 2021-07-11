@@ -71,8 +71,16 @@ export type GameStates = {
   currentPlayerIndex : number;
   playerStates : PlayerStateMap;
   ownershipMap : OwnershipMap;
+  displayedPlayerId : string|null;
   canRollDice : boolean;
   locationSaleState? : LocationSaleState;
+}
+export const INIT_GAME_STATES : GameStates = {
+  currentPlayerIndex : 0,
+  playerStates : {},
+  ownershipMap : {},
+  displayedPlayerId : null,
+  canRollDice : true,
 }
 
 export type GameStatesMutators = Record<keyof GameStates, (a:any)=>void>;
@@ -84,14 +92,14 @@ export const mutateGameStates = (
   (Object.keys( gameStateAfter ) as Array<keyof GameStates>)
     .forEach( k => {
       if ( gameStateBefore[k] !== gameStateAfter[k] ) {
-        console.log( 'Setting ' + k, gameStateAfter[k] )
+//        console.log( 'Setting ' + k, gameStateAfter[k] )
         gameStateMutator[k]( gameStateAfter[k] );
       }
     } );
   (Object.keys( gameStateBefore ) as Array<keyof GameStates>)
     .forEach( k => {
       if ( gameStateBefore[k] && gameStateAfter[k] === undefined ) {
-        console.log( 'Unsetting ' + k )
+//        console.log( 'Unsetting ' + k )
         gameStateMutator[k]( undefined );
       }
     } );
@@ -105,11 +113,4 @@ export const doGameStatesAction = <T>(
     gameStates: GameStates ) => {
   mutateGameStates( gameStatesMutators, gameStates,
       gameStatesAction( arg, gameStates ) );
-}
-
-export const INIT_GAME_STATES : GameStates = {
-  currentPlayerIndex : 0,
-  playerStates : {},
-  ownershipMap : {},
-  canRollDice : true,
 }

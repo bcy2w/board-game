@@ -16,6 +16,7 @@ interface Props {
 
   boardModel : BoardModel;
 
+  onClick? : ()=>void;
   onStepEnd? : ()=>void;
 }
 
@@ -49,7 +50,7 @@ function Player( props : Props ) {
   }
 
   const handleAnimationEnd = () => {
-    props.onStepEnd?.()
+    props.onStepEnd?.();
   }
 
   const classes = [
@@ -68,6 +69,7 @@ function Player( props : Props ) {
   return (
     <img src={player} className={classes}
         style={style}
+        onClick={props.onClick}
         onAnimationEnd={handleAnimationEnd}
         alt={'Player '+props.playerState.playerInfo.playerId} />
   );

@@ -4,7 +4,6 @@ import {PlayerState} from './GameStates';
 import BoardModel from './BoardModel';
 
 interface Props {
-  playerNumber : number;
   playerState : PlayerState;
   boardModel : BoardModel;
 }
@@ -12,10 +11,6 @@ interface Props {
 function PlayerInfoWidget( props : Props ) {
   return (
     <Form>
-      <Form.Group>
-        <Form.Label>Player Number</Form.Label>
-        <Form.Control type="text" placeholder={''+props.playerNumber} readOnly/>
-      </Form.Group>
       <Form.Group>
         <Form.Label>Name</Form.Label>
         <Form.Control type="text" placeholder={''+props.playerState.playerInfo.name} readOnly/>
