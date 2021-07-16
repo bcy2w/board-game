@@ -6,11 +6,12 @@ import Player from './Player';
 import PlayerInfoWidget from './PlayerInfoWidget';
 import LocationSaleWidget from './LocationSaleWidget';
 import {
-    PlayerInfo
-  , PlayerState, PlayerStateMap, PlayerStateAction, mapPlayerStateAction, INIT_PLAYER_STATE
+    TurnState
+  , PlayerInfo
+  , PlayerState, updatePlayerState, mapPlayerStateAction, INIT_PLAYER_STATE
   , Ownership
   , LocationSaleState
-  , GameStates, GameStatesMutators, GameStatesAction, doGameStatesAction, mutateGameStates, INIT_GAME_STATES
+  , GameStates, GameStatesMutators, GameStatesAction, mutateGameStates, INIT_GAME_STATES
   } from './GameStates';
 import Dice from './Dice';
 import BoardModel from './BoardModel';
@@ -25,41 +26,28 @@ type Props = {
   playersInfo : Array<PlayerInfo>;
 }
 
-/**
- * Updates a player's state with a delta.
- */
-function updatePlayerState(
-    playerId : string,
-    stateDelta : Partial<PlayerState>,
-    playerStates: PlayerStateMap
-    ) : PlayerStateMap {
-  const playerState = playerStates[playerId];
-
-  return {...playerStates,
-      [playerId] : {...playerState,...stateDelta}
-    };
-}
-
 ////////////////////////////////////////////////////////////////////////
 
 /**
  * Start a step if there is a step available.
  */
 function maybeStartStep( playerState : PlayerState ) : PlayerState {
-  if ( !playerState.gotoLocationId && playerState.stepsAvailable >= 1 ) {
-    const nextLocations = boardModel.getNextLocations( playerState.locationId );
-    const nextLocationId = nextLocations[0].locationId;
-    return _assign( {}, playerState, {
+  if ( playerState.gotoLocationId || playerState.stepsAvailable < 1 ) {
+    return playerState;
+  }
+  // Not in the process of stepping but there steps available.
+  const nextLocations = boardModel.getNextLocations( playerState.locationId );
+  const nextLocationId = nextLocations[0].locationId;
+  return { ...playerState, 
       stepsAvailable: playerState.stepsAvailable - 1,
       gotoLocationId: nextLocationId
-    } );
-  }
-  return playerState;
+    };
 }
 
 ////////////////////////////////////////////////////////////////////////
 
 function Monopoly( props : Props ) {
+  const [turnState,setTurnState] = useState( INIT_GAME_STATES.turnState );
   const [currentPlayerIndex,setCurrentPlayerIndex] = useState( INIT_GAME_STATES.currentPlayerIndex );
   const [playerStates,setPlayerStates] = useState( INIT_GAME_STATES.playerStates );
   const [ownershipMap,setOwnershipMap] = useState( INIT_GAME_STATES.ownershipMap );
@@ -68,6 +56,7 @@ function Monopoly( props : Props ) {
   const [locationSaleState,setLocationSaleState] = useState( INIT_GAME_STATES.locationSaleState );
 
   const gameStatesMutators : GameStatesMutators = {
+    turnState : setTurnState,
     currentPlayerIndex : setCurrentPlayerIndex,
     playerStates : (s)=>sleep(100).then(()=>setPlayerStates(s)),
     ownershipMap : setOwnershipMap,
@@ -77,6 +66,7 @@ function Monopoly( props : Props ) {
   }
 
   const gameStates0 = {
+    turnState : turnState,
     currentPlayerIndex : currentPlayerIndex,
     playerStates : playerStates,
     ownershipMap : ownershipMap,
@@ -88,7 +78,7 @@ function Monopoly( props : Props ) {
   const newPlayerStatesEntries = props.playersInfo
       // Find players that don't already have states.
       .filter( p => !playerStates[p.playerId] )
-      // Create a new state for the players.
+      // Create a new state for each player.
       .map( p => [ p.playerId, { playerInfo : p, ...INIT_PLAYER_STATE } ] );
   if ( newPlayerStatesEntries.length ) {
     setPlayerStates( {
@@ -97,6 +87,7 @@ function Monopoly( props : Props ) {
     } );
     return<span>Adding Players...</span>;
   }
+
   const currentPlayerId = props.playersInfo[currentPlayerIndex].playerId;
   const currentPlayerState = playerStates[currentPlayerId];
 
@@ -107,16 +98,18 @@ function Monopoly( props : Props ) {
 
   ////////////////////////////////////////////////////////////
 
-  const handleGameStatesAction = <T extends any>( action: GameStatesAction<T>, arg: T ) => {
-    doGameStatesAction<T>( action, gameStatesMutators, arg, gameStates );
+  const doGameStatesAction = <T extends any>( action: GameStatesAction<T>, arg: T ) => {
+    mutateGameStates( gameStatesMutators, gameStates, action( arg, gameStates ) );
   }
+
+  ////////////////////////////////////////////////////////////
 
   return (
     <div className="monopoly">
       <img src={background} className="board-background" alt="background" />
       <div className="dice">
         <Dice disabled={!canRollDice}
-            onRoll={(rolls: Array<number>)=>handleGameStatesAction( doDiceRoll, rolls )}
+            onRoll={(rolls: Array<number>)=>doGameStatesAction( handleDiceRoll, rolls )}
           />
       </div>
       { props.playersInfo.map( (playerInfo,index) =>
@@ -125,8 +118,9 @@ function Monopoly( props : Props ) {
             boardModel={boardModel}
             playerIndexAtLocation={index}
             playerState={playerStates[playerInfo.playerId]}
-            onClick={()=>{console.log( 'ZZZ ', playerInfo); handleGameStatesAction( doSetUserInfoDisplay, playerInfo.playerId )}}
-            onStepEnd={()=>handleGameStatesAction( doPlayerStepEnd, playerInfo.playerId )}
+            isCurrentPlayer={playerInfo.playerId === currentPlayerId}
+            onClick={()=>doGameStatesAction( handleSetUserInfoDisplay, playerInfo.playerId )}
+            onStepEnd={()=>doGameStatesAction( handlePlayerStepEnd, playerInfo.playerId )}
           />
         )
       }
@@ -140,8 +134,8 @@ function Monopoly( props : Props ) {
           <LocationSaleWidget boardModel={boardModel}
               locationSaleState={locationSaleState}
               playerState={currentPlayerState}
-              onBuy={(arg:LocationSaleState)=>handleGameStatesAction( doLocationSaleBuy, arg )}
-              onDecline={()=>handleGameStatesAction( doLocationSaleDecline, undefined )}
+              onBuy={(arg:LocationSaleState)=>doGameStatesAction( handleLocationSaleBuy, arg )}
+              onDecline={()=>doGameStatesAction( handleLocationSaleDecline, undefined )}
             />
         </div>)
       }
@@ -149,22 +143,33 @@ function Monopoly( props : Props ) {
   );
 
   ////////////////////////////////////////////////////////////
+  // Game States Actions
 
-  function doSetUserInfoDisplay( playerId: string, gameStates: GameStates ) : GameStates {
+  /**
+   * Change the Player Info Display to show the specified player.
+   * @param playerId ID fo player to display
+   * @param gameStates 
+   * @returns 
+   */
+  function handleSetUserInfoDisplay( playerId: string, gameStates: GameStates ) : GameStates {
     return {...gameStates,
       displayedPlayerId : playerId
     };
   }
 
-  function doDiceRoll(
+  function handleDiceRoll(
       rolls : Array<number>,
       gameStates : GameStates ) : GameStates {
 
+    if ( gameStates.turnState !== TurnState.ROLL_TO_START ) {
+      // Not time to roll.  Ignore.
+      return gameStates;
+    }
+
+    // Add up the rolls
     const roll = rolls.reduce( (subtotal,roll)=>subtotal+roll, 0 );
 
-    const playerState = gameStates.playerStates[currentPlayerId];
-
-    const nextLocations = boardModel.getNextLocations( playerState.locationId );
+    const nextLocations = boardModel.getNextLocations( currentPlayerState.locationId );
     const nextLocationId = nextLocations[0].locationId;
 
     // TODO: check if in prison
@@ -179,6 +184,7 @@ function Monopoly( props : Props ) {
     );
 
     return { ...gameStates,
+      turnState : TurnState.STEPPING,
       canRollDice : false,
       playerStates : newPlayerStates
     }
@@ -186,10 +192,10 @@ function Monopoly( props : Props ) {
   }
 
   /**
-   * 
+   * Player has finished stepping to a new location.
    * @param index Player's index
    */
-  function doPlayerStepEnd ( playerId: string, gameStates: GameStates ) : GameStates {
+  function handlePlayerStepEnd ( playerId: string, gameStates: GameStates ) : GameStates {
     const playerState = gameStates.playerStates[ playerId ];
     const currentLocationId = playerState.gotoLocationId || playerState.locationId;
 
@@ -223,6 +229,7 @@ function Monopoly( props : Props ) {
         if ( location.cost !== undefined ) {
           // Location is ownable
           const locationSaleGameState = { ...newGameStates,
+            turnState : TurnState.LOCATION_SALE,
             locationSaleState : {
               locationId : currentLocationId,
               playerId : playerId,
@@ -233,39 +240,46 @@ function Monopoly( props : Props ) {
           return locationSaleGameState;
         } else {
           // Location is not ownable
-          return doTurnEnd( newGameStates );
+          return handleTurnEnd( newGameStates );
         }
 
       } else {
-        return doTurnEnd( newGameStates );
+        return handleTurnEnd( newGameStates );
       }
 
     }
     return newGameStates;
   }
 
-  function doLocationSaleBuy(
+  /**
+   * Completes a Location sale.
+   * @param locationSaleState 
+   * @param gameStates 
+   * @returns 
+   */
+  function handleLocationSaleBuy(
       locationSaleState : LocationSaleState,
       gameStates: GameStates ) : GameStates {
 
     // Pay the price
     const newPlayerStates = updatePlayerState(
-      currentPlayerId,
+      locationSaleState.playerId,
       {
         cash: currentPlayerState.cash - locationSaleState.askingPrice
       },
       gameStates.playerStates
     );
 
+    // Create a new Ownership mapping.
     const newOwnershipMap = {...ownershipMap,
       [locationSaleState.locationId] : {
         locationId : locationSaleState.locationId,
-        ownerId : currentPlayerId,
+        ownerId : locationSaleState.playerId,
         numPipes : 0,
         numCastles : 0
       }};
 
-    return doTurnEnd( { ...gameStates,
+    return handleTurnEnd( { ...gameStates,
       playerStates : newPlayerStates,
       ownershipMap : newOwnershipMap,
       locationSaleState : undefined,
@@ -273,19 +287,20 @@ function Monopoly( props : Props ) {
 
   }
 
-  function doLocationSaleDecline(
-      arg:void,
+  function handleLocationSaleDecline(
+      __:void,
       gameStates: GameStates ) : GameStates {
 
-    return doTurnEnd( { ...gameStates,
+    return handleTurnEnd( { ...gameStates,
       locationSaleState : undefined,
     } );
 
   }
 
-  function doTurnEnd( gameStates: GameStates ) : GameStates {
+  function handleTurnEnd( gameStates: GameStates ) : GameStates {
     return {
       ...gameStates,
+      turnState : TurnState.ROLL_TO_START,
       currentPlayerIndex : (gameStates.currentPlayerIndex+1) % props.playersInfo.length,
       displayedPlayerId : null,
       canRollDice : true

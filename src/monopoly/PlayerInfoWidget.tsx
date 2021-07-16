@@ -1,7 +1,9 @@
 import React from 'react';
 import Form from 'react-bootstrap/form';
+import Col from 'react-bootstrap/col';
 import {PlayerState} from './GameStates';
 import BoardModel from './BoardModel';
+import './PlayerInfoWidget.css';
 
 interface Props {
   playerState : PlayerState;
@@ -11,19 +13,25 @@ interface Props {
 function PlayerInfoWidget( props : Props ) {
   return (
     <Form>
-      <Form.Group>
-        <Form.Label>Name</Form.Label>
-        <Form.Control type="text" placeholder={''+props.playerState.playerInfo.name} readOnly/>
+      <Form.Group className="text-right">
+        <Form.Label column="sm">Player</Form.Label>
+        <Form.Control readOnly type="text" size="sm"
+            placeholder={''+props.playerState.playerInfo.name}/>
       </Form.Group>
-      <Form.Group>
-        <Form.Label>Location</Form.Label>
-        <Form.Control type="text" placeholder={
+      <Form.Group as={Col}>
+        <Form.Label column="sm">Location</Form.Label>
+        <Col>
+        <Form.Control readOnly type="text" size="sm" placeholder={
             props.boardModel.getLocationName(props.playerState.locationId)
-          } readOnly/>
+          } />
+        </Col>
       </Form.Group>
-      <Form.Group>
-        <Form.Label>Cash</Form.Label>
-        <Form.Control type="text" placeholder={''+props.playerState.cash} readOnly/>
+      <Form.Group as={Col}>
+        <Form.Label column="sm">Cash</Form.Label>
+        <Col>
+        <Form.Control readOnly type="text" size="sm"
+            placeholder={''+props.playerState.cash}/>
+        </Col>
       </Form.Group>
     </Form>
   );

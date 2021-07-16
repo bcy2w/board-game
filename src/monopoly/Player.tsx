@@ -1,4 +1,7 @@
-import React, {useState} from 'react';
+import React, {
+    useState,
+    AnimationEvent
+  } from 'react';
 
 import BoardModel from './BoardModel';
 import {PlayerState} from './GameStates';
@@ -9,6 +12,8 @@ import player from './player-0.svg';
 
 interface Props {
   playerState : PlayerState;
+
+  isCurrentPlayer : boolean;
 
   playerIndexAtLocation : number;
 
@@ -22,8 +27,8 @@ interface Props {
 
 const playerColours : Array<string> = [
     'green',
-    'purple',
-    'light-blue',
+    'orange',
+    'blue',
   ];
 
 
@@ -33,7 +38,7 @@ const getColourClass = ( playerIndex : number ) : string =>
 function Player( props : Props ) {
   const [isAnimating,setIsAnimating] = useState( false );
 
-  const [offsetX,offsetY] = [props.playerIndexAtLocation * 5, props.playerIndexAtLocation * 10];
+  const [offsetX,offsetY] = [props.playerIndexAtLocation * 8, props.playerIndexAtLocation * 10];
 
   const [x,y] = props.boardModel.getCoordinates( props.playerState.locationId );
 
@@ -49,17 +54,27 @@ function Player( props : Props ) {
     setIsAnimating( true );
   }
 
-  const handleAnimationEnd = () => {
-    props.onStepEnd?.();
+  const handleAnimationEnd = (event:AnimationEvent) => {
+    console.log( 'ZZZ event', event );
+    if ( event.animationName === 'animateMove' ) {
+      props.onStepEnd?.();
+    }
   }
+
+  // console.log( 'ZZZ is Player', props)
 
   const classes = [
       'player',
-      'colour-filter-'+getColourClass(props.playerIndexAtLocation),
-      isAnimating && 'animating'
+      isAnimating && 'animating',
+//      props.isCurrentPlayer && 'current-player',
     ].filter(Boolean).join( ' ' );
 
-  const style = {
+  const imgClasses = [
+      'colour-filter-'+getColourClass(props.playerIndexAtLocation),
+      props.isCurrentPlayer && 'current-player',
+    ].filter(Boolean).join( ' ' );
+
+  const positionStyle = {
     left : x + offsetX,
     top  : y + offsetY,
     "--translateX" : diffX+'px',
@@ -67,11 +82,14 @@ function Player( props : Props ) {
   } as React.CSSProperties;
 
   return (
-    <img src={player} className={classes}
-        style={style}
-        onClick={props.onClick}
-        onAnimationEnd={handleAnimationEnd}
-        alt={'Player '+props.playerState.playerInfo.playerId} />
+    <div className={classes}
+        style={positionStyle}
+        onAnimationEnd={handleAnimationEnd} >
+      <img src={player} className={imgClasses}
+          height={30}
+          onClick={props.onClick}
+          alt={'Player '+props.playerState.playerInfo.playerId} />
+    </div>
   );
 }
 

@@ -16,7 +16,15 @@ const rollDie = () : number => Math.floor( Math.random() * 6 ) + 1;
 
 
 function Dice( props : Props ) {
-  const [dice,setDice] = useState( Array(props.numDice).fill(1) );
+  const [disabled,setDisabled] = useState( true );
+  const [dice,setDice] = useState( Array(props.numDice).fill(0) );
+
+  if ( disabled !== props.disabled ) {
+    setDisabled( props.disabled );
+  }
+  if ( disabled && !props.disabled ) {
+    setDice( Array(props.numDice).fill(0) );
+  }
 
   const handleRollDice = () => {
 
@@ -31,7 +39,7 @@ function Dice( props : Props ) {
     <div>
       { dice.map( (die,index) => (
         <div key={index}>
-          <span>{die}</span>
+          <span>{die||'?'}</span>
         </div>
         ))
       }

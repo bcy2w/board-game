@@ -1,4 +1,13 @@
-import BoardModel, { INIT_LOCATION_ID } from "./BoardModel";
+import { INIT_LOCATION_ID } from "./BoardModel";
+
+////////////////////////////////////////////////////////////
+export enum TurnState {
+  ROLL_TO_START,
+  STEPPING,
+  LOCATION_SALE,
+  AUCTION,
+  ENDABLE
+}
 
 ////////////////////////////////////////////////////////////
 
@@ -26,23 +35,51 @@ export const INIT_PLAYER_STATE : Omit<PlayerState, 'playerInfo'> = {
 
 export type PlayerStateMap = Record<string,PlayerState>;
 
+/**
+ * Updates a player's state with a delta.
+ */
+export function updatePlayerState(
+    playerId : string,
+    stateDelta : Partial<PlayerState>,
+    playerStates: PlayerStateMap
+    ) : PlayerStateMap {
+  const playerState = playerStates[playerId];
+
+  return {...playerStates,
+      [playerId] : {...playerState,...stateDelta}
+    };
+}
+
 export type PlayerStateAction = (arg:PlayerState)=>PlayerState;
+
+type PlayerStateFunctionState<A> = [A,PlayerState];
+type PlayerStateFunction<A,B> = (arg:PlayerStateFunctionState<A>) => PlayerStateFunctionState<B>;
+
+function mapPlayerStateAction_(
+    playerStateAction : PlayerStateAction,
+    playerStates : PlayerStateMap ) : PlayerStateMap {
+
+  const playerStatesArray = Object.values( playerStates );
+  const newPlayerStatesArray = playerStatesArray.map( playerStateAction );
+
+  if ( playerStatesArray.every(
+      (playerState,index) => playerState === newPlayerStatesArray[index]) ) {
+    return playerStates;
+  }
+
+  const newPlayerStates = Object.fromEntries(newPlayerStatesArray.map( p => [p.playerInfo.playerId,p] ) );
+  return newPlayerStates;
+}
 
 export function mapPlayerStateAction(
     playerStateAction : PlayerStateAction,
     gameStates : GameStates ) : GameStates {
-  const playerStatesArray = Object.values( gameStates.playerStates );
 
-  const newPlayerStatesArray = playerStatesArray.map( playerStateAction );
+  const playerStates = gameStates.playerStates;
+  const newPlayerStates = mapPlayerStateAction_( playerStateAction, playerStates );
 
-  if ( playerStatesArray.some(
-      (playerState,index) => playerState !== newPlayerStatesArray[index]) ) {
-
-    const newPlayerStates = Object.fromEntries(newPlayerStatesArray.map( p => [p.playerInfo.playerId,p] ) );
-    return {...gameStates, playerStates:newPlayerStates}
-
-  }
-  return gameStates;
+  return playerStates === newPlayerStates ? gameStates :
+      {...gameStates, playerStates:newPlayerStates};
 }
 
 ////////////////////////////////////////////////////////////
@@ -68,6 +105,7 @@ export type OwnershipMap = Record<string,Ownership>;
 ////////////////////////////////////////////////////////////
 
 export type GameStates = {
+  turnState : TurnState,
   currentPlayerIndex : number;
   playerStates : PlayerStateMap;
   ownershipMap : OwnershipMap;
@@ -76,6 +114,7 @@ export type GameStates = {
   locationSaleState? : LocationSaleState;
 }
 export const INIT_GAME_STATES : GameStates = {
+  turnState : TurnState.ROLL_TO_START,
   currentPlayerIndex : 0,
   playerStates : {},
   ownershipMap : {},
@@ -83,32 +122,46 @@ export const INIT_GAME_STATES : GameStates = {
   canRollDice : true,
 }
 
+/**
+ * A map of mutators for the game states.
+ */
 export type GameStatesMutators = Record<keyof GameStates, (a:any)=>void>;
 
+/**
+ * Compares each game state and call its mutator if it has changed.
+ * @param gameStatesMutator
+ * @param gameStatesBefore 
+ * @param gameStatesAfter 
+ */
 export const mutateGameStates = (
-    gameStateMutator : GameStatesMutators,
-    gameStateBefore : GameStates,
-    gameStateAfter : GameStates ) => {
-  (Object.keys( gameStateAfter ) as Array<keyof GameStates>)
+    gameStatesMutator : GameStatesMutators,
+    gameStatesBefore : GameStates,
+    gameStatesAfter : GameStates ) => {
+
+  // Check for states that have changed or are added.
+  (Object.keys( gameStatesAfter ) as Array<keyof GameStates>)
     .forEach( k => {
-      if ( gameStateBefore[k] !== gameStateAfter[k] ) {
-//        console.log( 'Setting ' + k, gameStateAfter[k] )
-        gameStateMutator[k]( gameStateAfter[k] );
+      if ( gameStatesBefore[k] !== gameStatesAfter[k] ) {
+//        console.log( 'Setting ' + k, gameStatesAfter[k] )
+        gameStatesMutator[k]( gameStatesAfter[k] );
       }
     } );
-  (Object.keys( gameStateBefore ) as Array<keyof GameStates>)
+
+  // Check for states that have been removed.
+  (Object.keys( gameStatesBefore ) as Array<keyof GameStates>)
     .forEach( k => {
-      if ( gameStateBefore[k] && gameStateAfter[k] === undefined ) {
+      if ( gameStatesBefore[k] && gameStatesAfter[k] === undefined ) {
 //        console.log( 'Unsetting ' + k )
-        gameStateMutator[k]( undefined );
+        gameStatesMutator[k]( undefined );
       }
     } );
 }
+
 export type GameStatesAction<T> = (arg: T, gameStates: GameStates) => GameStates;
 
-export const doGameStatesAction = <T>(
-    gameStatesAction : GameStatesAction<T>,
+const doGameStatesAction = <T>(
     gameStatesMutators: GameStatesMutators,
+    gameStatesAction : GameStatesAction<T>,
     arg: T,
     gameStates: GameStates ) => {
   mutateGameStates( gameStatesMutators, gameStates,

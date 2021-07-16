@@ -1,7 +1,7 @@
 import React from 'react';
 import Button from 'react-bootstrap/Button'
 import Form from 'react-bootstrap/form';
-import {LocationSaleState,GameStates,PlayerState} from './GameStates';
+import {LocationSaleState,PlayerState} from './GameStates';
 import BoardModel from './BoardModel';
 
 interface Props {
@@ -23,18 +23,21 @@ function LocationSaleWidget( props : Props ) {
   return (
     <Form>
       <Form.Group>
-        <Form.Label>Location</Form.Label>
-        <Form.Control type="text" placeholder={location.name} readOnly/>
+        <Form.Label column="sm">Location</Form.Label>
+        <Form.Control readOnly size="sm" type="text" placeholder={location.name}/>
       </Form.Group>
       <Form.Group>
-        <Form.Label>Cost</Form.Label>
-        <Form.Control type="text" placeholder={''+props.locationSaleState.askingPrice} readOnly/>
+        <Form.Label column="sm">Cost</Form.Label>
+        <Form.Control readOnly size="sm" type="text" placeholder={''+props.locationSaleState.askingPrice}/>
       </Form.Group>
-      <Button className="the-button" variant="primary"
+      <hr/>
+      <Form.Group>
+      <Button variant="primary"
           onClick={()=>props.onBuy?.(props.locationSaleState)}>Buy</Button>
       &nbsp;
-      <Button className="the-button" variant="primary"
+      <Button variant="primary"
           onClick={()=>props.onDecline?.(props.locationSaleState)}>Decline</Button>
+      </Form.Group>
     </Form>
   );
 }

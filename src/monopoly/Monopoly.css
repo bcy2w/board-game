@@ -21,10 +21,10 @@
 }
 
 .player-info {
-  width : 10rem;
+  width : 180px;
   position: absolute;
-  top: 100px;
-  left: 400px;
+  top: 60px;
+  left: 390px;
 }
 
 .location-sale {
