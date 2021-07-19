@@ -1,4 +1,4 @@
-import { INIT_LOCATION_ID } from "./BoardModel";
+import { BoardModel } from "./BoardModel";
 
 ////////////////////////////////////////////////////////////
 export enum TurnState {
@@ -14,6 +14,7 @@ export enum TurnState {
 export interface PlayerInfo {
   playerId : string;
   name : string;
+  colour : string;
 }
 
 export type PlayerState = {
@@ -27,10 +28,13 @@ export type PlayerState = {
   stepsAvailable : number;
 }
 
-export const INIT_PLAYER_STATE : Omit<PlayerState, 'playerInfo'> = {
-  cash : 1000000,
-  locationId : INIT_LOCATION_ID,
-  stepsAvailable : 0
+
+export function getInitPlayerState( boardModel : BoardModel ) : Omit<PlayerState, 'playerInfo'> {
+  return {
+    cash : 1000000,
+    locationId : boardModel.getInitLocationId(),
+    stepsAvailable : 0
+  };
 }
 
 export type PlayerStateMap = Record<string,PlayerState>;
@@ -110,6 +114,7 @@ export type GameStates = {
   playerStates : PlayerStateMap;
   ownershipMap : OwnershipMap;
   displayedPlayerId : string|null;
+  displayedLocationId : string|null;
   canRollDice : boolean;
   locationSaleState? : LocationSaleState;
 }
@@ -119,6 +124,7 @@ export const INIT_GAME_STATES : GameStates = {
   playerStates : {},
   ownershipMap : {},
   displayedPlayerId : null,
+  displayedLocationId : null,
   canRollDice : true,
 }
 

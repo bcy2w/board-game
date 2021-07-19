@@ -1,21 +1,20 @@
 import React, {useState} from 'react';
 import {PlayerInfo} from './GameStates';
 import Monopoly from './Monopoly';
+import './App.css'
 
 const INIT_PLAYERS_INFO : Array<PlayerInfo> = [
-  { playerId:'p1', name: 'Alan' },
-  { playerId:'p2', name: 'Blake' },
-  { playerId:'p3', name: 'Chris' },
+  { playerId:'p1', name: 'Alan', colour: 'orange' },
+  { playerId:'p2', name: 'Blake', colour: 'blue' },
+  { playerId:'p3', name: 'Chris', colour: 'green' },
 ];
 
 function App() {
   const [playersInfo,setPlayerIds] = useState( INIT_PLAYERS_INFO );
   return (
-    <div className="App">
-      <header className="App-header">
-        <Monopoly
-            playersInfo={playersInfo}/>
-      </header>
+    <div className="MonopolyApp">
+      <Monopoly
+          playersInfo={playersInfo}/>
     </div>
   );
 }

@@ -3,20 +3,24 @@ import React, {useState} from 'react';
 import background from './board-background.svg';
 import './Monopoly.css';
 import Player from './Player';
+import Property from './Property';
 import PlayerInfoWidget from './PlayerInfoWidget';
+import LocationInfoWidget from './LocationInfoWidget';
 import LocationSaleWidget from './LocationSaleWidget';
 import {
     TurnState
   , PlayerInfo
-  , PlayerState, updatePlayerState, mapPlayerStateAction, INIT_PLAYER_STATE
+  , PlayerState, updatePlayerState, mapPlayerStateAction, getInitPlayerState
   , Ownership
   , LocationSaleState
   , GameStates, GameStatesMutators, GameStatesAction, mutateGameStates, INIT_GAME_STATES
   } from './GameStates';
 import Dice from './Dice';
-import BoardModel from './BoardModel';
+import {getNextLocations} from './BoardModel';
+import {marioBoardModel} from './super-mario-bros/BoardModel';
 
-const boardModel = new BoardModel();
+const boardModel = marioBoardModel;
+const initPlayerState = getInitPlayerState( boardModel );
 
 function sleep( ms : number ) {
   return new Promise( r => setTimeout( r, ms ) );
@@ -36,7 +40,7 @@ function maybeStartStep( playerState : PlayerState ) : PlayerState {
     return playerState;
   }
   // Not in the process of stepping but there steps available.
-  const nextLocations = boardModel.getNextLocations( playerState.locationId );
+  const nextLocations = getNextLocations( boardModel, playerState.locationId );
   const nextLocationId = nextLocations[0].locationId;
   return { ...playerState, 
       stepsAvailable: playerState.stepsAvailable - 1,
@@ -52,6 +56,7 @@ function Monopoly( props : Props ) {
   const [playerStates,setPlayerStates] = useState( INIT_GAME_STATES.playerStates );
   const [ownershipMap,setOwnershipMap] = useState( INIT_GAME_STATES.ownershipMap );
   const [displayedPlayerId,setDisplayedPlayerId] = useState( INIT_GAME_STATES.displayedPlayerId );
+  const [displayedLocationId,setDisplayedLocationId] = useState( INIT_GAME_STATES.displayedLocationId );
   const [canRollDice,setCanRollDice] = useState( INIT_GAME_STATES.canRollDice );
   const [locationSaleState,setLocationSaleState] = useState( INIT_GAME_STATES.locationSaleState );
 
@@ -61,6 +66,7 @@ function Monopoly( props : Props ) {
     playerStates : (s)=>sleep(100).then(()=>setPlayerStates(s)),
     ownershipMap : setOwnershipMap,
     displayedPlayerId : setDisplayedPlayerId,
+    displayedLocationId : setDisplayedLocationId,
     canRollDice : setCanRollDice,
     locationSaleState : setLocationSaleState,
   }
@@ -71,6 +77,7 @@ function Monopoly( props : Props ) {
     playerStates : playerStates,
     ownershipMap : ownershipMap,
     displayedPlayerId : displayedPlayerId,
+    displayedLocationId : displayedLocationId,
     canRollDice : canRollDice,
     locationSaleState : locationSaleState,
   }
@@ -79,7 +86,7 @@ function Monopoly( props : Props ) {
       // Find players that don't already have states.
       .filter( p => !playerStates[p.playerId] )
       // Create a new state for each player.
-      .map( p => [ p.playerId, { playerInfo : p, ...INIT_PLAYER_STATE } ] );
+      .map( p => [ p.playerId, { playerInfo : p, ...initPlayerState } ] );
   if ( newPlayerStatesEntries.length ) {
     setPlayerStates( {
       ...playerStates,
@@ -124,11 +131,30 @@ function Monopoly( props : Props ) {
           />
         )
       }
+      { Object.keys( ownershipMap ).map( (locationId,index) =>
+        <Property
+            key={index}
+            boardModel={boardModel}
+            location={boardModel.getLocation(locationId)}
+            ownerInfo={playerStates[ownershipMap[locationId].ownerId].playerInfo}
+          />
+        )
+      }
       <div className="player-info">
         <PlayerInfoWidget boardModel={boardModel}
             playerState={displayedPlayerId ? playerStates[displayedPlayerId] : currentPlayerState}
           />
       </div>
+      { turnState !== TurnState.ROLL_TO_START &&
+        <div className="location-info">
+          <LocationInfoWidget
+              location={displayedLocationId ?
+                  boardModel.getLocation( displayedLocationId ) :
+                  boardModel.getLocation( currentPlayerState.locationId )
+                }
+            />
+        </div>
+      }
       { locationSaleState &&
         (<div className="location-sale">
           <LocationSaleWidget boardModel={boardModel}
@@ -169,7 +195,7 @@ function Monopoly( props : Props ) {
     // Add up the rolls
     const roll = rolls.reduce( (subtotal,roll)=>subtotal+roll, 0 );
 
-    const nextLocations = boardModel.getNextLocations( currentPlayerState.locationId );
+    const nextLocations = getNextLocations( boardModel, currentPlayerState.locationId );
     const nextLocationId = nextLocations[0].locationId;
 
     // TODO: check if in prison
@@ -226,7 +252,7 @@ function Monopoly( props : Props ) {
       if ( !ownershipMap[currentLocationId] ) {
         const location = boardModel.getLocation( currentLocationId );
         // Location is not owned
-        if ( location.cost !== undefined ) {
+        if ( location?.cost !== undefined ) {
           // Location is ownable
           const locationSaleGameState = { ...newGameStates,
             turnState : TurnState.LOCATION_SALE,

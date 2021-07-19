@@ -3,7 +3,7 @@ import React, {
     AnimationEvent
   } from 'react';
 
-import BoardModel from './BoardModel';
+import {BoardModel} from './BoardModel';
 import {PlayerState} from './GameStates';
 
 import './Player.css';
@@ -40,10 +40,10 @@ function Player( props : Props ) {
 
   const [offsetX,offsetY] = [props.playerIndexAtLocation * 8, props.playerIndexAtLocation * 10];
 
-  const [x,y] = props.boardModel.getCoordinates( props.playerState.locationId );
+  const [x,y] = props.boardModel.getLocation( props.playerState.locationId ).coords;
 
   const [gotoX,gotoY] = props.playerState.gotoLocationId ?
-      props.boardModel.getCoordinates( props.playerState.gotoLocationId ) : [x,y];
+      props.boardModel.getLocation( props.playerState.gotoLocationId ).coords : [x,y];
 
   const [diffX,diffY] = [gotoX-x, gotoY-y];
 
@@ -55,7 +55,6 @@ function Player( props : Props ) {
   }
 
   const handleAnimationEnd = (event:AnimationEvent) => {
-    console.log( 'ZZZ event', event );
     if ( event.animationName === 'animateMove' ) {
       props.onStepEnd?.();
     }
@@ -66,11 +65,10 @@ function Player( props : Props ) {
   const classes = [
       'player',
       isAnimating && 'animating',
-//      props.isCurrentPlayer && 'current-player',
     ].filter(Boolean).join( ' ' );
 
   const imgClasses = [
-      'colour-filter-'+getColourClass(props.playerIndexAtLocation),
+      'colour-filter-'+props.playerState.playerInfo.colour,
       props.isCurrentPlayer && 'current-player',
     ].filter(Boolean).join( ' ' );
 

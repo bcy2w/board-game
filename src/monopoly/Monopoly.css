@@ -1,3 +1,24 @@
+.colour-filter-green{
+  /* filter: invert(19%) sepia(82%) saturate(1145%) hue-rotate(88deg) brightness(94%) contrast(108%); */
+  filter: invert(30%) sepia(98%) saturate(7052%) hue-rotate(119deg) brightness(97%) contrast(102%);
+}
+
+/* filter from https://codepen.io/sosuke/pen/Pjoqqp */
+.colour-filter-blue {
+  /* filter: invert(10%) sepia(83%) saturate(4552%) hue-rotate(292deg) brightness(92%) contrast(120%); */
+  /* filter: invert(13%) sepia(36%) saturate(4283%) hue-rotate(248deg) brightness(112%) contrast(140%); */
+filter: invert(12%) sepia(29%) saturate(5509%) hue-rotate(250deg) brightness(76%) contrast(125%);
+}
+
+.colour-filter-orange{
+  filter: invert(64%) sepia(91%) saturate(961%) hue-rotate(334deg) brightness(101%) contrast(102%);
+}
+
+
+.colour-filter-purple {
+  filter: invert(46%) sepia(73%) saturate(6158%) hue-rotate(245deg) brightness(100%) contrast(101%);
+}
+
 .monopoly {
   position: relative;
   left:0;
@@ -14,6 +35,10 @@
   position: absolute;
 }
 
+.property {
+  position: absolute;
+}
+
 .dice {
   position: absolute;
   top: 100px;
@@ -27,9 +52,16 @@
   left: 390px;
 }
 
+.location-info {
+  width : 180px;
+  position: absolute;
+  top: 300px;
+  left: 100px;
+}
+
 .location-sale {
   width : 10rem;
   position: absolute;
   top: 300px;
-  left: 100px;
+  left: 390px;
 }

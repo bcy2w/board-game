@@ -1,0 +1,39 @@
+import React, {
+  } from 'react';
+import {BoardModel,Location} from './BoardModel';
+import {PlayerInfo} from './GameStates';
+
+import './Player.css';
+import propertyImage from './property-0.svg';
+import player from './player-0.svg';
+
+interface Props {
+  boardModel : BoardModel;
+  location : Location;
+  ownerInfo : PlayerInfo;
+}
+
+function Property( props : Props ) {
+  const classes = [
+      'property',
+      'colour-filter-'+props.ownerInfo.colour,
+    ].filter(Boolean).join( ' ' );
+
+  const [x,y] = props.boardModel.getLocation( props.location.id ).coords;
+
+  const [offsetX,offsetY] = [30,5];
+
+  const positionStyle = {
+    left : x + offsetX,
+    top  : y + offsetY,
+  } as React.CSSProperties;
+
+  return (
+    <img src={propertyImage} className={classes}
+        style={positionStyle}
+        height={15}
+        />
+  );
+}
+
+export default Property;

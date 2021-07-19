@@ -2,7 +2,7 @@ import React from 'react';
 import Form from 'react-bootstrap/form';
 import Col from 'react-bootstrap/col';
 import {PlayerState} from './GameStates';
-import BoardModel from './BoardModel';
+import {BoardModel} from './BoardModel';
 import './PlayerInfoWidget.css';
 
 interface Props {
@@ -22,7 +22,7 @@ function PlayerInfoWidget( props : Props ) {
         <Form.Label column="sm">Location</Form.Label>
         <Col>
         <Form.Control readOnly type="text" size="sm" placeholder={
-            props.boardModel.getLocationName(props.playerState.locationId)
+            props.boardModel.getLocation(props.playerState.locationId).name
           } />
         </Col>
       </Form.Group>
