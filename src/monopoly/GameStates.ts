@@ -1,8 +1,10 @@
-import { BoardModel } from "./BoardModel";
+import { EndoFn, Fn } from './logic/fp';
+import { BoardModel } from './BoardModel';
 
 ////////////////////////////////////////////////////////////
 export enum TurnState {
-  ROLL_TO_START,
+  TURN_START,
+  IN_JAIL,
   STEPPING,
   LOCATION_SALE,
   AUCTION,
@@ -23,15 +25,17 @@ export type PlayerState = {
   cash : number;
 
   locationId : string;
+  stepsAvailable : number;
+
+  numTurnsInJail? : number;
 
   gotoLocationId? : string;
-  stepsAvailable : number;
 }
 
 
 export function getInitPlayerState( boardModel : BoardModel ) : Omit<PlayerState, 'playerInfo'> {
   return {
-    cash : 1000000,
+    cash : 2000,
     locationId : boardModel.getInitLocationId(),
     stepsAvailable : 0
   };
@@ -54,10 +58,19 @@ export function updatePlayerState(
     };
 }
 
-export type PlayerStateAction = (arg:PlayerState)=>PlayerState;
+export const playerStatesAction = (
+    playerId : string,
+    stateDelta : Partial<PlayerState>
+  ) : EndoFn<PlayerStateMap> =>
+  playerStates => updatePlayerState( playerId, stateDelta, playerStates );
 
-type PlayerStateFunctionState<A> = [A,PlayerState];
-type PlayerStateFunction<A,B> = (arg:PlayerStateFunctionState<A>) => PlayerStateFunctionState<B>;
+type PlayerStateF<A> = [PlayerState,A];
+type PlayerStateFn<A,B> = Fn<PlayerStateF<A>,PlayerStateF<B>>;
+
+const playerStatePipe = <A>(...fns: Array<PlayerStateFn<any,any>>) =>
+  (initValue: PlayerStateF<A>) => fns.reduce( (value,fn) => fn(value), initValue );
+
+export type PlayerStateAction = (arg:PlayerState)=>PlayerState;
 
 function mapPlayerStateAction_(
     playerStateAction : PlayerStateAction,
@@ -86,6 +99,35 @@ export function mapPlayerStateAction(
       {...gameStates, playerStates:newPlayerStates};
 }
 
+export function updatePlayerCashAction(
+    playerState: PlayerState,
+    amount: number ): EndoFn<PlayerStateMap> {
+  return playerStatesAction(
+      playerState.playerInfo.playerId, { cash: playerState.cash - amount } );
+}
+
+type PlayerStatesF<A> = [PlayerStateMap, Record<string,A>];
+type PlayerStatesFn<A,B> = Fn<PlayerStatesF<A>,PlayerStatesF<B>>;
+
+function playerStatesFmap<A,B>( f : PlayerStateFn<A,B> ): PlayerStatesFn<A,B> {
+  return ( [playerStates,valuesMap] ) => {
+    const resultsArray : Array<[PlayerState,B]> = Object.entries( valuesMap )
+      .filter( ([playerId]) => playerStates[playerId] )
+      .map( ([playerId,value]) => f( [playerStates[playerId],value] ) );
+
+    // Create new PlayerStateMap if anyone's state has changed.
+    const resultPlayerStates : PlayerStateMap = resultsArray.every(
+          ([s]) => s === playerStates[s.playerInfo.playerId] ) ?
+        playerStates :
+        Object.fromEntries(resultsArray.map( ([s]) => [s.playerInfo.playerId,s] ) );
+
+    const results : Record<string,B> = Object.fromEntries(
+        resultsArray.map( ([s,value]) => [s.playerInfo.playerId, value] ) );
+
+    return [resultPlayerStates,results];
+  }
+}
+
 ////////////////////////////////////////////////////////////
 
 export type LocationSaleState = {
@@ -97,12 +139,19 @@ export type LocationSaleState = {
 
 ////////////////////////////////////////////////////////////
 
+type Development = {
+  type : string;
+  value : number;
+  rent : number;
+}
+
 export type Ownership = {
   locationId : string;
   ownerId : string;
 
   numPipes : number;
   numCastles : number;
+  developements? : Array<Development>
 }
 export type OwnershipMap = Record<string,Ownership>;
 
@@ -115,17 +164,19 @@ export type GameStates = {
   ownershipMap : OwnershipMap;
   displayedPlayerId : string|null;
   displayedLocationId : string|null;
-  canRollDice : boolean;
   locationSaleState? : LocationSaleState;
+
+  numDoublesRolled : number;
 }
 export const INIT_GAME_STATES : GameStates = {
-  turnState : TurnState.ROLL_TO_START,
+  turnState : TurnState.TURN_START,
   currentPlayerIndex : 0,
   playerStates : {},
   ownershipMap : {},
   displayedPlayerId : null,
   displayedLocationId : null,
-  canRollDice : true,
+
+  numDoublesRolled : 0,
 }
 
 /**

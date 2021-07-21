@@ -1,22 +1,23 @@
 
-type Development = {
-  name : string;
-  cost : number;
-  rent : number;
-}
-
 type Neighbour = {
   locationId : string;
   neighbourType? : string;
 }
 
+export enum SpecialLocationType {
+  JAIL = 'JAIL',
+  GOTO_JAIL = 'GOTO_JAIL'
+}
+
 export type Location = {
   id : string;
   name : string;
+  type? : SpecialLocationType;
   coords : Array<number>;
   
   forwardNeighbours : Array<Neighbour>;
   cost? : number;
+  rent? : number;
 }
 
 export interface BoardModel {

@@ -1,6 +1,6 @@
 import React, {
   } from 'react';
-import {BoardModel,Location} from './BoardModel';
+import {BoardModel} from './BoardModel';
 import {PlayerInfo} from './GameStates';
 
 import './Player.css';
@@ -9,7 +9,7 @@ import player from './player-0.svg';
 
 interface Props {
   boardModel : BoardModel;
-  location : Location;
+  locationId : string;
   ownerInfo : PlayerInfo;
 }
 
@@ -19,7 +19,7 @@ function Property( props : Props ) {
       'colour-filter-'+props.ownerInfo.colour,
     ].filter(Boolean).join( ' ' );
 
-  const [x,y] = props.boardModel.getLocation( props.location.id ).coords;
+  const [x,y] = props.boardModel.getLocation( props.locationId ).coords;
 
   const [offsetX,offsetY] = [30,5];
 

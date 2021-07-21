@@ -16,19 +16,17 @@ function LocationInfoWidget( props : Props ) {
         <Form.Control readOnly type="text" size="sm"
             placeholder={''+props.location.name}/>
       </Form.Group>
-      { props.location.cost &&
-        <Form.Group>
-          <Form.Label column="sm">Cost</Form.Label>
-          <Form.Control readOnly type="text" size="sm"
-              placeholder={''+props.location.cost}
-            />
-        </Form.Group>
-      }
+      <Form.Group>
+        <Form.Label column="sm">Cost</Form.Label>
+        <Form.Control readOnly type="text" size="sm"
+            placeholder={''+(props.location.cost||'n/a')}
+          />
+      </Form.Group>
       <Form.Group as={Col}>
         <Form.Label column="sm">Rent</Form.Label>
         <Col>
         <Form.Control readOnly type="text" size="sm"
-            placeholder='n/a'/>
+            placeholder={''+(props.location.rent||'n/a')}/>
         </Col>
       </Form.Group>
     </Form>
