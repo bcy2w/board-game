@@ -21,8 +21,6 @@ export default function handlePlayerLocationLanding( {
   } : Params,
   gameStates : GameStates ): GameStates {
 
-    console.log( 'ZZZ landing', gameStates)
-
   const playerState = gameStates.playerStates[playerId];
   const currentLocationId = playerState.locationId;
   const location = boardModel.getLocation( currentLocationId );
